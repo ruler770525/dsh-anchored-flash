@@ -1,0 +1,418 @@
+# The `anchored-flash` agent preset: standard-flash (standard + subagents
+# pinned to deepseek-v4-flash) with the anchored two-phase tool catalog:
+#
+#  - REQUEST #1 sees the OFFICIAL Minimal preset's real tool pair —
+#    persistent `bash` + `str_replace_editor` (Windows: custom-bash Git Bash
+#    under the same `bash` name) — capped at `bootstrapMaxTokens: 1024`, with
+#    auto-injected context stripped: the skill catalog (`skill-catalog`),
+#    the AGENTS.md/CLAUDE.md digest (`agent-instructions`), and the whole
+#    runtime-context snapshot (`contexts: []`, which covers the memory-evolve
+#    `memory:snapshot` contribution — verified against dsh-system-prompt's
+#    assemble waterfall). The persona section is replaced with the Minimal
+#    sentence "You are a helpful software engineer assistant."
+#    (`bootstrapPersona`). This is the Minimal condition measured in
+#    xiaobright/dsh-anchored-standard issue #11 (5/5 anchored vs 11/11
+#    standard-like).
+#  - After the first durable promotion signal (first `tool/call` OR first
+#    `assistant/message`, whichever comes first; `promoteOn: either`), the
+#    catalog narrows to the RESIDENT whitelist below + whatever the model
+#    explicitly unlocked via `dev_tool_search` (one call, stays unlocked,
+#    resume-safe). Runtime context and injected reminders flow again — the
+#    "first-round strip, then restore" behavior.
+#  - SUBAGENTS follow the same anchor flow (`includeSubagents: true`):
+#    subagent/subagent_fork/workflow workers/ralph fresh agents get a
+#    bootstrap first request too, then the resident catalog. Their route is
+#    pinned to deepseek-v4-flash + reasoningEffort max (agentOptions).
+#  - After a compaction the session falls back to the controlled phase
+#    (bootstrap pair + `compactionTools`) until a NEW promotion signal exists
+#    past the boundary (epoch-aware).
+#
+# Composition notes from upstream (agent-plane rules):
+# - This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
+#   standing scope; every session naming it joins by scope parentage. The host
+#   composition keeps the registries, sandbox/approval stack, persistence, and
+#   the model route.
+# - A service row MUST sit inside a group carrying an `isolate` realm when it
+#   publishes a service; `dsh-agent-presets` rejects root-realm publishes at
+#   mount.
+# - `tool-bootstrap` must stay FIRST: dsh-agent-instructions and dsh-tool-skill
+#   inject into the first request via the agent/pre-step waterfall, and
+#   waterfall after-next transforms apply in reverse registration order.
+#   Registering first (plus `prepend`) makes the strip the final transform.
+
+# ── bootstrap (must stay FIRST) ─────────────────────────────────────────────
+
+- id: tool-bootstrap
+  name: ./tool-bootstrap.mjs
+  config:
+    bootstrapTools: [bash, str_replace_editor]
+    promoteOn: either
+    bootstrapMaxTokens: 1024
+    suppressedContextSources: [agent-instructions, skill-catalog]
+    includeSubagents: true
+    # First-request persona: the official Minimal system prompt sentence.
+    # Restored to the standard persona after promotion.
+    bootstrapPersona: 'You are a helpful software engineer assistant.'
+    # Post-promotion resident whitelist: the core work set the model can use
+    # without unlocking. exit_plan_mode is REQUIRED resident — the plan mode
+    # exit — otherwise a plan-mode session cannot leave. Everything else
+    # (subagent, workflow, ralph, goals, jobs, de_broadcast, de_canvas,
+    # de_notify, de_channel_send, de_session_search, memory_suggest,
+    # memory_review_status, skill_manage, cordis_*, mcp__playwright__*, …) is
+    # one dev_tool_search away.
+    residentTools: [bash, pwsh, str_replace_editor, read, write, edit, glob, grep, memory, dtodo, todo_write, ask_user_question, web_search, dev_tool_search, de_session, read_image, exit_plan_mode, skill_search, skill_load]
+    # Post-compaction core work set: mid-task, but a small catalog.
+    compactionTools: [read, write, edit, glob, grep, todo_write, ask_user_question, memory, dtodo]
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+# The preset's own persona, shadowing the deployment default for this agent.
+# `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
+# Kept standard (NOT Minimal's `complete: true`): the bootstrap filter swaps
+# the sections to the Minimal sentence for the first request and keeps it
+# there in EVERY phase (full-minimal, see tool-bootstrap.mjs). NOTE: the
+# bootstrap filter REPLACES these sections while bootstrapping, so the
+# persona text below only matters if you disable that replacement — but the
+# assembled system prompt stays the single Minimal sentence in every phase.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+
+      Environment rules (OPTIONAL, per-deployment; measured: <= ~500 chars
+      resident after promotion does not perturb the anchored trajectory):
+      put your "wrong = everything wrong" facts here, e.g. sandbox network
+      calls use Python (curl/Invoke-WebRequest fail via schannel), your
+      exact Python path, output-encoding rules. Keep the detail in
+      ~/.dsh/AGENTS.md (topic index) + AGENTS-*.md topic files + env-*
+      skills, read on demand.
+
+# DISABLED: the full AGENTS.md/CLAUDE.md digest (up to 64KB) is a large
+# injected block that pulls the trajectory back to standard-like behavior
+# after promotion (measured 2026-08-16; upstream issue #19). Replaced by
+# `instruction-hint` below: one short neutral reference note injected once
+# after promotion (EXPERIMENT 1: declarative wording, no imperative verbs —
+# the upstream "read first and follow them" phrasing is a directive-role
+# injection that shifted reasoning from "we" to "let me", measured on
+# session 546a4f16).
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  disabled: true
+
+# EXPERIMENT 1: re-enabled with neutral declarative wording (see
+# instruction-hint.mjs header). Tests whether a non-command reference note
+# preserves the "we" trajectory while letting the model discover the
+# environment documents.
+- id: instruction-hint
+  name: ./instruction-hint.mjs
+  config:
+    promoteOn: either
+
+# ── shell ───────────────────────────────────────────────────────────────────
+
+# Disabled on EVERY platform: the persistent shell (linux/darwin) or
+# custom-bash (win32) below registers the same `bash` tool name into this same
+# preset layer, and the tools registry rejects duplicates within one layer.
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: true
+
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: !!js process.platform !== 'win32'
+
+# The Minimal preset's shell: a PTY-backed persistent bash, byte-identical in
+# configuration to the official `minimal` preset's `persistent-shell` group so
+# the first request exposes exactly Minimal's real `bash` schema (linux/darwin
+# only; DISABLED ON WINDOWS — see custom-bash below).
+- id: persistent-shell
+  name: cordis:group
+  group: true
+  disabled: !!js process.platform === 'win32'
+  isolate:
+    terminals: true
+  config:
+    - id: pty
+      name: '@deepseek-ai/dsh-terminal'
+
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+      config:
+        timeoutMs: 300000
+
+    - id: persistent-bash
+      name: '@deepseek-ai/dsh-tool-bash-persistent'
+      config:
+        timeoutMs: 300000
+        description: |-
+          Run commands in a bash shell
+          * When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.
+          * You don't have access to the internet via this tool.
+          * You do have access to a mirror of common linux and python packages via apt and pip.
+          * State is persistent across command calls and discussions with the user.
+          * To inspect a particular line range of a file, e.g. lines 10-25, try 'sed -n 10,25p /path/to/the/file'.
+          * Please avoid commands that may produce a very large amount of output.
+          * Please run long lived commands in the background, e.g. 'sleep 10 &' or start a server in the background.
+
+# Windows-only `bash` tool: registers the SAME tool name as the persistent
+# shell with a Minimal-compatible description, but executes through the
+# ordinary cross-platform subprocess seam (`bash -c`) instead of a PTY. Point
+# bashPath at Git Bash explicitly (AGENTS.md: C:\Program Files\Git\bin\bash.exe).
+# No OS sandbox confinement on Windows (landlock is linux-only).
+- id: custom-bash
+  name: ./custom-bash.mjs
+  disabled: !!js process.platform !== 'win32'
+  config:
+    bashPath: 'C:\Program Files\Git\bin\bash.exe'
+
+# ── filesystem ──────────────────────────────────────────────────────────────
+
+# Both register into the host `tools` registry and provide nothing, so
+# they need no realm. The `fs` service and its policy stay in the host.
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+
+# The Minimal preset's second tool: `str_replace_editor` over a bare local
+# filesystem, byte-identical in configuration to the official `minimal`
+# preset's `filesystem` group. The editor's own realm shadows the host's
+# sandboxed `fs` provider only inside this group, so the standard `read`/
+# `write`/`edit` tools keep the sandboxed fs while the bootstrap editor uses
+# the local one.
+- id: bootstrap-filesystem
+  name: cordis:group
+  group: true
+  isolate:
+    fs: true
+  config:
+    - id: fs-local
+      name: '@deepseek-ai/dsh-fs-local'
+      config:
+        cwd: !!js process.env.DSH_CWD ?? process.cwd()
+
+    - id: str-replace-editor
+      name: '@deepseek-ai/dsh-tool-str-replace-editor'
+      config:
+        maxOutputChars: 16000
+
+# ── background jobs ────────────────────────────────────────────────────────
+
+# Only the model-facing controls. The task REGISTRY stays on the host plane:
+# its producers sit outside any realm this file could put it in — `tool-bash`
+# above resolves it with `ctx.get`, and an entry-local realm here is invisible
+# to every sibling row, so `run_in_background` would answer "background jobs
+# unavailable" while these controls sat in the catalog. The registry is keyed by
+# owning agent anyway, so one host instance serves every session. What a preset
+# chooses is whether its agent can collect and stop background work at all.
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+
+# ── skills ──────────────────────────────────────────────────────────────────
+
+# The skill REGISTRY lives in the host composition and is layered per scope:
+# these rows register into THIS preset's layer of it, so they need no realm.
+# `tool-skill` is DISABLED: the ~9KB <available_skills> catalog injection is
+# a large block that pulls the trajectory back to standard-like behavior
+# after promotion (issue #6: 0/9 anchored with the catalog present vs ~81%
+# without; measured regression on 2026-08-16). Skills stay discoverable via
+# `dev_tool_search` (search + unlock) and the user can still invoke a skill
+# gesture explicitly.
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+  disabled: true
+
+# On-demand skill discovery replacing the catalog injection: skill_search
+# (summaries by keyword) + skill_load (inject ONE skill's instructions for
+# the next request). The model discovers skills without a 9KB dump.
+- id: skill-search
+  name: ./skill-search.mjs
+
+# ── on-demand tool discovery ────────────────────────────────────────────────
+
+- id: dev-tool-search
+  name: ./dev-tool-search.mjs
+
+# ── goals ───────────────────────────────────────────────────────────────────
+
+# Only the model-facing tool. The goal SERVICE, its session driver, and the
+# `/goal` command stay on the host plane: the Gateway serves the goal domain as
+# Remote endpoints whose receiver comes from a generated descriptor, so it
+# resolves `goals` on the host and an entry-local realm here would hide it. The
+# registry is keyed by session anyway, so one host instance serves every
+# session. What a preset chooses is whether its agent can call the goal tool.
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+
+# ── plan mode ───────────────────────────────────────────────────────────────
+
+# Plan state is per-agent by nature, so an entry-local realm is not a
+# workaround here — it is the correct lifetime.
+- id: planning
+  name: cordis:group
+  group: true
+  isolate:
+    planMode: true
+  config:
+    - id: plan-mode
+      name: '@deepseek-ai/dsh-plan-mode'
+      config:
+        section: |
+              You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+              Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+              The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+              Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+              Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+              When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+
+# ── compaction ──────────────────────────────────────────────────────────────
+
+# `compaction-basic` reads `toolResultPrune` through `ctx.get`, so the pruner must
+# share this realm rather than sit outside it.
+#
+# `tokenMeter` is deliberately NOT in this realm: the meter stays on the HOST
+# plane, and the rows here resolve that one instance. It takes no configuration,
+# keys every fold by Session, and owns the context-meter projection units the
+# browser reads for every session — behind a realm those units would come and go
+# with whichever presets happen to be mounted. What a preset chooses is whether
+# its agent compacts at all, which is `compaction-basic` below.
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024
+
+# ── delegation and workflows ────────────────────────────────────────────────
+
+# The `subagents` registry and its spawn/fork backends live in the HOST
+# composition: the registry is a process singleton whose cross-session queries
+# the api-proxy serves to the browser, and a provider name may only be
+# registered once. This preset contributes the delegation TOOLS, which resolve
+# that host registry.
+#
+# `workflows` is different — nothing outside an agent reads it — so every row
+# that reaches it shares one entry-local realm here, and a consumer left
+# outside would resolve a host registry this preset does not populate.
+#
+# `tool-subagent-report` is host-plane for the same reason as the registry,
+# not because a preset may not want it: it registers a CONTINUABLE SETUP on
+# that singleton rather than a tool this agent calls, and the setup list is
+# not scope-aware — one copy per mounted preset means every child gets
+# `report` registered once per live session, which throws on the second.
+- id: delegation
+  name: cordis:group
+  group: true
+  isolate:
+    workflowEngine: true
+  config:
+    - id: tool-subagent-control
+      name: '@deepseek-ai/dsh-tool-subagent-control'
+
+    - id: tool-subagent-list-agents
+      name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+
+    # Subagents pinned to deepseek-v4-flash + reasoningEffort max:
+    # agentOptions override the parent route (resolveChildAgentOptions spreads
+    # `requested` last). With includeSubagents: true above, the child's FIRST
+    # request still goes through the bootstrap anchor; the resident catalog
+    # opens from its second request.
+    - id: tool-subagent
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn
+        toolName: subagent
+        backgroundMode: continuable
+        agentOptions:
+          provider: deepseek-official
+          model: deepseek-v4-flash
+          reasoningEffort: max
+
+    - id: tool-subagent-fork
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: fork
+        toolName: subagent_fork
+        backgroundMode: continuable
+        agentOptions:
+          provider: deepseek-official
+          model: deepseek-v4-flash
+          reasoningEffort: max
+
+    # Product providers are host-plane singletons. Copy this preset, then
+    # remove `disabled` from either ordinary tool row to expose that product
+    # only to agents composed from the copy.
+    - id: tool-subagent-codex
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: codex
+        toolName: subagent_codex
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+    - id: tool-subagent-claude-code
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: claude-code
+        toolName: subagent_claude_code
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+    - id: workflow-worker-thread
+      name: '@deepseek-ai/dsh-workflow-worker-thread'
+      config:
+        provider: spawn
+
+    - id: tool-workflow
+      name: '@deepseek-ai/dsh-tool-workflow'
+
+    - id: tool-ralph
+      name: '@deepseek-ai/dsh-tool-ralph'
+      config:
+        subagentProvider: spawn
+        maxRounds: 64
+
+# ── remaining model-facing rows ─────────────────────────────────────────────
+
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+
+# The `web` service and its search provider stay in the host composition; only
+# the model-facing tool is per-session.
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: false
+    searchTimeoutMs: 60000
