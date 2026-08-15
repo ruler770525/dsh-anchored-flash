@@ -2,7 +2,7 @@
  * Anchored tool bootstrap — `anchored-flash` 定制版
  *
  * 移植自 xiaobright/dsh-anchored-standard 的 preset/tool-bootstrap.mjs
- * （MIT；上游 NOTICE 见 D:\Deepseek Harness\anchored-preset\NOTICE）。
+ * （MIT；上游 NOTICE 见本仓库根目录 NOTICE 文件）。
  * 相对上游的三处本地定制：
  *
  *  1. residentTools 配置化：晋升后的常驻目录由 agent.cordis.yml 的

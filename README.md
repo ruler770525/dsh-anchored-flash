@@ -1,5 +1,7 @@
 # dsh-anchored-flash
 
+English | [中文](./README.zh-CN.md)
+
 An experimental DeepSeek Harness agent preset: **Minimal-aligned anchoring with
 low-injection post-promotion, an indirect AGENTS.md injection pattern, and
 subagent anchoring** — the "anchored intelligence without the IQ drop"

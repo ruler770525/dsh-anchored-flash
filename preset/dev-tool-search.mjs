@@ -2,9 +2,9 @@
  * dev-tool-search — on-demand tool discovery and unlock, the tool-search
  * pattern for the anchored preset.
  *
- * Copied from xiaobright/dsh-anchored-standard (MIT; NOTICE at
- * D:\Deepseek Harness\anchored-preset\NOTICE), with the resident-set
- * description adapted to this preset's whitelist.
+ * Copied from xiaobright/dsh-anchored-standard (MIT; see NOTICE in this
+ * repository), with the resident-set description adapted to this preset's
+ * whitelist.
  *
  * The promoted phase keeps only a minimal resident set (see agent.cordis.yml
  * `residentTools`) instead of dumping the whole catalog at once. This plugin

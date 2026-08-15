@@ -3,8 +3,8 @@
  * name (`bash`) as the official persistent bash, with a Minimal-compatible
  * description, but executes through `ctx.subprocess.spawn` instead of a PTY.
  *
- * Copied from xiaobright/dsh-anchored-standard (MIT; NOTICE at
- * D:\Deepseek Harness\anchored-preset\NOTICE).
+ * Copied from xiaobright/dsh-anchored-standard (MIT; see NOTICE in this
+ * repository).
  *
  * WHY: DeepSeek's first-request trajectory anchor keys on the tool SCHEMA
  * matching the RL training distribution (issue #11: persistent

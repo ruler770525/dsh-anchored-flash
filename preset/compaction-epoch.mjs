@@ -1,7 +1,7 @@
 /**
  * Epoch-aware promotion tracker shared by the bootstrap plugins of the
  * anchored presets. Copied verbatim from xiaobright/dsh-anchored-standard
- * (MIT; NOTICE at D:\Deepseek Harness\anchored-preset\NOTICE).
+ * (MIT; see NOTICE in this repository).
  *
  * A compaction rewrites the model-visible surface: the pre-compaction
  * conversation collapses into one synthetic summary message, and the
