@@ -3,8 +3,8 @@
  * name (`bash`) as the official persistent bash, with a Minimal-compatible
  * description, but executes through `ctx.subprocess.spawn` instead of a PTY.
  *
- * Copied from xiaobright/dsh-anchored-standard (MIT; see NOTICE in this
- * repository).
+ * Copied from xiaobright/dsh-anchored-standard (MIT; NOTICE at
+ * D:\Deepseek Harness\anchored-preset\NOTICE).
  *
  * WHY: DeepSeek's first-request trajectory anchor keys on the tool SCHEMA
  * matching the RL training distribution (issue #11: persistent
@@ -64,8 +64,7 @@ export function apply(ctx, config) {
     description: [
       'Run commands in a bash shell (Git Bash on Windows)',
       '* When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.',
-      "* You don't have access to the internet via this tool.",
-      '* You do have access to a mirror of common linux and python packages via apt and pip.',
+      '* You DO have internet access via this tool (no sandbox network restriction on Windows); prefer Python urllib/requests or git for network tasks per the user environment notes.',
       '* State does NOT persist across command calls: each call runs in a fresh shell.',
       "* To inspect a particular line range of a file, e.g. lines 10-25, try 'sed -n 10,25p /path/to/the/file'.",
       '* Please avoid commands that may produce a very large amount of output.',
