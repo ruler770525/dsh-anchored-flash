@@ -149,9 +149,12 @@ export function apply(ctx, config) {
       const root = await findProjectRoot(fs, cwd, signal)
       projectFiles.push(...await presentInDir(fs, root, PROJECT_CANDIDATES, signal))
 
+      // FIX (2026-08-16): include the FULL resolved paths in the hint — the
+      // model was looking for "AGENTS.md" inside its cwd and could not find
+      // the user-global file otherwise.
+      const dshHome = process.env.DSH_HOME ?? (process.env.USERPROFILE ? `${process.env.USERPROFILE}\\.dsh` : undefined)
       const userGlobalFiles = []
       try {
-        const dshHome = process.env.DSH_HOME ?? (process.env.USERPROFILE ? `${process.env.USERPROFILE}\\.dsh` : undefined)
         if (dshHome !== undefined) {
           userGlobalFiles.push(...await presentInDir(fs, dshHome, [USER_GLOBAL_CANDIDATE], signal))
         }
@@ -161,10 +164,12 @@ export function apply(ctx, config) {
 
       const sections = []
       if (projectFiles.length > 0) {
-        sections.push(`Reference documents exist: ${projectFiles.join(', ')} (project root: ${root}).`)
+        const paths = projectFiles.map((name) => joinPath(root, name))
+        sections.push(`Reference documents exist: ${paths.join(', ')}.`)
       }
       if (userGlobalFiles.length > 0) {
-        sections.push(`A user reference document exists: ${USER_GLOBAL_CANDIDATE} (topic index; topic files AGENTS-*.md and env-* skills).`)
+        const paths = userGlobalFiles.map((name) => joinPath(dshHome, name))
+        sections.push(`A user reference document exists: ${paths.join(', ')} (topic index; topic files AGENTS-*.md and env-* skills).`)
       }
       if (sections.length === 0) return decision
 
