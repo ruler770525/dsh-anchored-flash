@@ -11,6 +11,17 @@ Fork of [`xiaobright/dsh-anchored-standard`](https://github.com/xiaobright/dsh-a
 with local modifications; the experiment report is in
 [upstream issue #49](https://github.com/xiaobright/dsh-anchored-standard/issues/49).
 
+> **Maintenance status (2026-08-17)**: upstream
+> [`xiaobright/dsh-anchored-standard`](https://github.com/xiaobright/dsh-anchored-standard)
+> has entered maintenance mode (FAREWELL — the official API price change made
+> the experiment series cost-prohibitive). This repository, an experiment
+> branch of that series, is **frozen**: it no longer tracks upstream, and the
+> experiment conclusions live in
+> [upstream issue #49](https://github.com/xiaobright/dsh-anchored-standard/issues/49).
+> Related work has moved to the `zhu1090093659/dsh-web-ui` ecosystem (the
+> non-assertive AGENTS.md hint, `instructionHint`, was merged there as #388).
+> Local installs keep working; no further releases are planned here.
+
 ## What makes this different from upstream
 
 | Feature | Upstream `anchored-standard` | This preset |

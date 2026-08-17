@@ -6,6 +6,14 @@
 
 基于 [`xiaobright/dsh-anchored-standard`](https://github.com/xiaobright/dsh-anchored-standard) 的定制分支；完整实验报告见[上游 issue #49](https://github.com/xiaobright/dsh-anchored-standard/issues/49)。
 
+> **维护状态（2026-08-17）**：上游
+> [`xiaobright/dsh-anchored-standard`](https://github.com/xiaobright/dsh-anchored-standard)
+> 已进入维护模式（FAREWELL——官方 API 价格变动使该实验系列成本过高）。
+> 本仓库作为该系列的实验分支**保持冻结**：不再随上游演进，实验结论存档于
+> [上游 issue #49](https://github.com/xiaobright/dsh-anchored-standard/issues/49)。
+> 相关工作已迁移至 `zhu1090093659/dsh-web-ui` 生态（AGENTS.md 非强制提示
+> instructionHint 已并入 #388）。本地安装与使用不受影响；本仓库不再计划新发布。
+
 ## 与上游的差异
 
 | 特性 | 上游 `anchored-standard` | 本预设 |
